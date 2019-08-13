@@ -72,7 +72,7 @@ function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
        data.frame(ftime,cenind,cengroup),subset=cengroup==k))
 ### note: want censring dist km at ftime-
     u <- approx(c(0,u$time,max(u$time)*(1+10*.Machine$double.eps)),c(1,u$surv,
-       0),xout=ftime*(1-100*.Machine$double.eps),method='constant',f=0,rule=2)
+       0),xout=ftime*(1-100*.Machine$double.eps),method='constant',f=0,rule=2,ties=mean)
     uuu[k,1:length(u$y)] <- u$y
 #    u <- summary(u,times=sort(ftime*(1-.Machine$double.eps)))
 #    uuu[k,1:length(u$surv)] <- u$surv
