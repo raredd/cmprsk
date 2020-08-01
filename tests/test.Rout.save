@@ -1,8 +1,7 @@
 
-R version 2.15.0 (2012-03-30)
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
-Platform: x86_64-apple-darwin9.8.0/x86_64 (64-bit)
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -18,12 +17,10 @@ Type 'q()' to quit R.
 
 > library(cmprsk)
 Loading required package: survival
-Loading required package: splines
-> u <- R.Version()
-> if (u$major>'1' | u$major == '1' & u$minor>'6.2') RNGversion("1.6.2")
-Warning message:
-In RNGkind("Marsaglia-Multicarry", "Buggy Kinderman-Ramage") :
-  Buggy version of Kinderman-Ramage generator used
+> 
+> options(warn=-1)
+> RNGversion("1.6.2")
+> options(warn=0)
 > 
 > set.seed(2)
 > ss <- rexp(100)
@@ -473,4 +470,4 @@ Pseudo likelihood ratio test = 0  on 1 df,
 > 
 > proc.time()
    user  system elapsed 
-  0.424   0.026   0.442 
+  1.144   0.119   1.251 

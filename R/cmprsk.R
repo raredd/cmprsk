@@ -2,20 +2,20 @@
 # distributed under the terms of the GNU public license
 crr <-
 # function for regression modeling of subdistribution functions
-# arguments: 
+# arguments:
 #  ftime = vector of failure/censoring times
 #  fstatus = vector with a unique code for each failure type and a
-#     separate code for censored observations 
+#     separate code for censored observations
 #  cov1 = (nobs x ncovs) matrix of fixed covariates
-#  cov2 = matrix of covariates multiplied by functions of time; 
-#     if used, often these covariates would also appear in cov1, 
+#  cov2 = matrix of covariates multiplied by functions of time;
+#     if used, often these covariates would also appear in cov1,
 #     to give a prop hazards effect plus a time interaction
 #  tf = functions of time.  A function that takes a vector of times as
-#     an argument and returns a matrix whose jth column is the value of 
+#     an argument and returns a matrix whose jth column is the value of
 #     the time function corresponding to the jth column of cov2 evaluated
 #     at the input time vector.  At time tk, the
 #     model includes the term cov2[,j]*tfs(tk)[,j] as a covariate.
-#  cengroup = vector with different values for each group with 
+#  cengroup = vector with different values for each group with
 #     a distinct censoring distribution (the censoring distribution
 #     is estimated separately within these groups)
 #  failcode = code of fstatus that denotes the failure type of interest
@@ -30,13 +30,13 @@ crr <-
 function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
          subset,na.action=na.omit,gtol=1e-6,maxiter=10,init,variance=TRUE) {
   ## LS
-  call <- match.call() 
+  call <- match.call()
   cov1.name <- deparse(substitute(cov1))
   cov1.vars <- cov2.vars <- NULL
-  if(!missing(cov1)) 
+  if(!missing(cov1))
     { cov1.vars <- colnames(as.matrix(cov1)) }
   cov2.name <- deparse(substitute(cov2))
-  if(!missing(cov2)) 
+  if(!missing(cov2))
     { cov2.vars <- colnames(as.matrix(cov2)) }
   ##
   d <- data.frame(ftime=ftime,fstatus=fstatus,
@@ -71,8 +71,11 @@ function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
     u <- do.call('survfit',list(formula=Surv(ftime,cenind)~1,data=
        data.frame(ftime,cenind,cengroup),subset=cengroup==k))
 ### note: want censring dist km at ftime-
-    u <- approx(c(0,u$time,max(u$time)*(1+10*.Machine$double.eps)),c(1,u$surv,
-       0),xout=ftime*(1-100*.Machine$double.eps),method='constant',f=0,rule=2,ties=mean)
+# changed 9-30-2019 for events at 0
+#    u <- approx(c(0,u$time,max(u$time)*(1+10*.Machine$double.eps)),c(1,u$surv,
+#       0),xout=ftime*(1-100*.Machine$double.eps),method='constant',f=0,rule=2)
+    u <- approx(c(min(0,u$time)-10*.Machine$double.eps,c(u$time,max(u$time)*(1+10*.Machine$double.eps))),c(1,u$surv,
+       0),xout=ftime*(1-100*.Machine$double.eps),method='constant',f=0,rule=2)
     uuu[k,1:length(u$y)] <- u$y
 #    u <- summary(u,times=sort(ftime*(1-.Machine$double.eps)))
 #    uuu[k,1:length(u$surv)] <- u$surv
@@ -196,7 +199,7 @@ function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
     if(is.null(cov1.vars)) cov1.vars <- x1
     else cov1.vars <- ifelse(cov1.vars=="",x1,cov1.vars)
   }
-  if(nc2 > 0) { 
+  if(nc2 > 0) {
     x1 <- paste(cov2.name, 1:nc2, sep="")
     if (is.null(cov2.vars)) cov2.vars <- x1
     else cov2.vars <- ifelse(cov2.vars=="",x1,cov2.vars)
@@ -209,54 +212,54 @@ function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
     ##
   z <- list(coef=b,loglik=-z[[1]],score=-z[[2]],inf=h0,
             var=v,res=r,uftime=uft,bfitj=bj,
-            tfs=as.matrix(tfs),converged=converge,call = call, n = nobs, 
+            tfs=as.matrix(tfs),converged=converge,call = call, n = nobs,
             n.missing = nmis, loglik.null = -fb0,invinf=h)
   class(z) <- 'crr'
   z
 }
 
-"summary.crr" <- function(object, conf.int = 0.95, digits = max(options()$digits - 5, 2), ...) 
+"summary.crr" <- function(object, conf.int = 0.95, digits = max(options()$digits - 5, 2), ...)
 {
   beta <- object$coef
   se <- sqrt(diag(object$var))
-  out <- list(call = object$call, converged = object$converged, 
-              n = object$n, n.missing = object$n.missing, 
+  out <- list(call = object$call, converged = object$converged,
+              n = object$n, n.missing = object$n.missing,
               loglik = object$loglik)
-  tmp <- cbind(beta, exp(beta), se, beta/se, 
+  tmp <- cbind(beta, exp(beta), se, beta/se,
                signif(2 * (1 - pnorm(abs(beta)/se)), digits))
-  dimnames(tmp) <- list(names(beta), c("coef", "exp(coef)", 
+  dimnames(tmp) <- list(names(beta), c("coef", "exp(coef)",
                         "se(coef)", "z", "p-value"))
   out$coef <- tmp
-  if(conf.int) 
+  if(conf.int)
     { a <- (1 - conf.int)/2
       a <- c(a, 1 - a)
       z <- qnorm(a)
-      tmp <- cbind(exp(beta), exp(-beta), 
+      tmp <- cbind(exp(beta), exp(-beta),
                    exp(beta + z[1] * se), exp(beta + z[2] * se))
-      dimnames(tmp) <- list(names(beta), c("exp(coef)", "exp(-coef)", 
-                            paste(format(100*a, trim = TRUE, 
-                                         scientific = FALSE, 
+      dimnames(tmp) <- list(names(beta), c("exp(coef)", "exp(-coef)",
+                            paste(format(100*a, trim = TRUE,
+                                         scientific = FALSE,
                                          digits = 3), "%", sep="")))
       out$conf.int <- tmp
   }
   df <- length(beta)
   logtest <- -2 * (object$loglik.null - object$loglik)
   out$logtest <- c(test = logtest, df = df)
-  # out$rsq <- c(rsq = 1 - exp(-logtest/object$n), 
+  # out$rsq <- c(rsq = 1 - exp(-logtest/object$n),
   #              maxrsq = 1 - exp(2 * object$loglik.null/object$n))
   class(out) <- "summary.crr"
   out
 }
 
-"print.summary.crr" <- function (x, digits = max(options()$digits - 4, 3), ...) 
+"print.summary.crr" <- function (x, digits = max(options()$digits - 4, 3), ...)
 {
     cat("Competing Risks Regression\n\n")
-    if(!is.null(x$call)) 
+    if(!is.null(x$call))
       { cat("Call:\n")
         dput(x$call)
-        cat("\n") 
+        cat("\n")
       }
-    if(!x$converged) 
+    if(!x$converged)
       { cat("crr converged:", x$converged, "\n")
         return()
       }
@@ -267,13 +270,13 @@ function(ftime,fstatus,cov1,cov2,tf,cengroup,failcode=1,cencode=0,
     print(x$conf.int)
     cat("\n")
     cat("Num. cases =", x$n)
-    if(x$n.missing > 0) 
+    if(x$n.missing > 0)
       cat(" (", x$n.missing, " cases omitted due to missing values)", sep="")
     cat("\n")
-    # cat("Rsquare =", format(round(x$rsq["rsq"], 3)), "  (max possible =", 
+    # cat("Rsquare =", format(round(x$rsq["rsq"], 3)), "  (max possible =",
     #    format(round(x$rsq["maxrsq"], 3)), ")\n")
     cat("Pseudo Log-likelihood =", x$loglik, "\n")
-    cat("Pseudo likelihood ratio test = ", format(round(x$logtest["test"], 2)), 
+    cat("Pseudo likelihood ratio test = ", format(round(x$logtest["test"], 2)),
         "  on ", x$logtest["df"], " df,",  "\n", sep = "")
 #        "  p-value = ", format(x$logtest["pvalue"]), "\n", sep = "")
     invisible()
@@ -349,7 +352,7 @@ print.crr <-
 cuminc <- function(ftime,fstatus,group,strata,rho=0,cencode=0,subset,na.action=na.omit) {
 # ftime=failure times, fstatus=variable which indicates the type
 # of failure (and cens), group is the group variable, strata=
-# strata variables for the tests (omit if none), rho is the 
+# strata variables for the tests (omit if none), rho is the
 # power of the weight function used in the tests, cencode is the value
 # of fstatus which indicates that a time is censored (default is 0)
 # subset = logical vector length(ftime) indicating which cases to include
@@ -359,7 +362,7 @@ cuminc <- function(ftime,fstatus,group,strata,rho=0,cencode=0,subset,na.action=n
 # functions (times, function values, variances) for each group, and
 # a component
 # values of the test statistics for comparing each cause among the
-# groups.  the tests are stratified (if strata specified).  
+# groups.  the tests are stratified (if strata specified).
 # check lengths, and status of group and strata
   d <- data.frame(time=ftime,cause=fstatus,
     group=as.factor(if (missing(group)) rep(1,length(ftime)) else group),
@@ -376,9 +379,12 @@ cuminc <- function(ftime,fstatus,group,strata,rho=0,cencode=0,subset,na.action=n
   d$group <- factor(d$group,names(ugg)[ugg>0])
   ugg <- levels(d$group)
   censind <- ifelse(d$cause==cencode,0,1)
-  uc <- table(d$cause[censind==1])
-  if (is.factor(d$cause)) uclab <- names(uc)[uc>0]
-  else uclab <- as.numeric(names(uc)[uc>0])
+  if (is.factor(d$cause)) {
+    uc <- table(d$cause[censind==1])
+    uclab <- names(uc)[uc>0]
+  } else {
+    uclab <- sort(unique(d$cause[censind==1])) # as.numeric(names(uc)[uc>0])
+  }
   nc <- length(uclab)
   ng <- length(ugg)
   if (ng>1) {
